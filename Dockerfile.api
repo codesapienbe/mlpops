@@ -1,0 +1,34 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python packages
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Download NLTK data
+RUN python -c "import nltk; nltk.download(['punkt', 'stopwords', 'wordnet', 'omw-1.4'], quiet=True)"
+
+# Copy application code
+COPY src/ ./src/
+COPY config.yml .
+
+# Create directories
+RUN mkdir -p /app/models /app/data
+
+# Create sample data
+RUN echo "job_title,company,location,description,requirements,posted_date,salary_category
+Software Engineer,TechCorp,Remote,Python development remote work,3 years experience required,2024-01-01,1
+Data Scientist,DataCo,New York,Machine learning position,5 years experience needed,2024-01-02,1
+Junior Developer,StartupX,Austin,Entry level position,1 year experience,2024-01-03,0
+Senior Engineer,BigTech,Seattle,Lead development role,7 years experience required,2024-01-04,1
+Intern,LocalCorp,Chicago,Summer internship program,No experience required,2024-01-05,0" > /app/data/jobs.csv
+
+EXPOSE 8000
+
+CMD ["python", "-m", "src.api"]

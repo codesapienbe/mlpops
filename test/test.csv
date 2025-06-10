@@ -1,0 +1,11 @@
+job_title,company,location,description,requirements,posted_date
+Python Developer,Acme Tech,Amsterdam NL,"Develop and maintain Python applications. Work on backend services and APIs.","2+ years Python experience, FastAPI/Django, SQL",2024-03-15
+Data Analyst,DataCorp,Rotterdam NL,"Analyze business data and create reports. Work with stakeholders on data insights.","Bachelor's degree, 1+ years data analysis, SQL, Python",2024-03-14
+Software Engineer,DevWorks,Utrecht NL,"Build and maintain web applications. Collaborate with cross-functional teams.","3+ years development, JavaScript, React, Node.js",2024-03-13
+Cloud Engineer,CloudTech,Eindhoven NL,"Manage cloud infrastructure and implement DevOps practices.","2+ years cloud experience, AWS/Azure, Docker",2024-03-12
+Frontend Developer,WebSolutions,The Hague NL,"Create responsive web interfaces and implement UI/UX designs.","2+ years frontend, HTML/CSS, JavaScript, React",2024-03-11
+Backend Developer,APITech,Groningen NL,"Design and implement RESTful APIs and microservices.","3+ years backend, Java/Spring, PostgreSQL",2024-03-10
+DevOps Engineer,InfraCorp,Tilburg NL,"Automate deployment processes and maintain CI/CD pipelines.","2+ years DevOps, Kubernetes, Jenkins",2024-03-09
+Security Specialist,SecureNet,Arnhem NL,"Implement security measures and conduct vulnerability assessments.","3+ years security, network security, Linux",2024-03-08
+Database Administrator,DataSys,Maastricht NL,"Manage database systems and optimize performance.","4+ years DBA, PostgreSQL, MySQL, MongoDB",2024-03-07
+IT Project Manager,ProjTech,Almere NL,"Lead IT projects and coordinate with development teams.","5+ years PM experience, Agile methodologies",2024-03-06

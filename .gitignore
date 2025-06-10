@@ -1,0 +1,26 @@
+.env
+.venv
+models/
+.cursor
+.vscode
+.DS_Store
+.idea
+
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+.coverage.*
+
+# IDE specific ignores
+## VSCode/Cursor
+*.code-workspace
+.vscode-insiders/
+.history/
+
+## JetBrains
+*.iml
+*.ipr
+*.iws
+.idea_modules/

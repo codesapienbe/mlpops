@@ -1,0 +1,39 @@
+services:
+  mlops-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    environment:
+      - CONFIG_PATH=/app/config.yml
+    depends_on:
+      - mlops-training
+    restart: unless-stopped
+
+  mlops-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://mlops-api:8000
+    depends_on:
+      - mlops-api
+    restart: unless-stopped
+
+  mlops-training:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: python -m src.pipeline
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    environment:
+      - CONFIG_PATH=/app/config.yml
+    restart: "no"
