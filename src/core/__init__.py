@@ -281,8 +281,7 @@ class Predictor:
     @log_call
     def predict_single(self, job):
         """Predict single job"""
-        # If target is direct requirement count, compute and return
-        if self.target == 'requirements_count':
+        if self.target in ('requirements', 'requirements_count'):
             try:
                 # Count comma-separated requirements
                 return len(str(job.requirements).split(','))
@@ -300,8 +299,7 @@ class Predictor:
     @log_call
     def predict_batch(self, jobs):
         """Predict batch of jobs"""
-        # If target is direct requirement count, compute and return list of counts
-        if self.target == 'requirements_count':
+        if self.target in ('requirements', 'requirements_count'):
             try:
                 return [len(str(j.requirements).split(',')) for j in jobs]
             except Exception as e:
