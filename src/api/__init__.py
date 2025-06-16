@@ -29,13 +29,13 @@ class JobInput(BaseModel):
     
     class Config:
         str_strip_whitespace = True
-        min_anystr_length = 1
+        str_min_length = 1
 
 class BatchInput(BaseModel):
     jobs: List[JobInput]
     
     class Config:
-        max_anystr_length = 1000
+        str_max_length = 1000
 
 class PredictionResponse(BaseModel):
     prediction: float
@@ -51,10 +51,10 @@ async def lifespan(app: FastAPI):
     config = config_manager.config
     app_state['predictor'] = Predictor(config)
     app_state['config'] = config
-    logger.info('API startup complete')
+    logger.info(f"API startup complete on {config['api']['host']}:{config['api']['port']}")
     yield
     # Shutdown
-    logger.info('API shutdown complete')
+    logger.info(f"API shutdown complete on {config['api']['host']}:{config['api']['port']}")
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -190,7 +190,8 @@ def create_app() -> FastAPI:
 def main():
     import uvicorn
     app = create_app()
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
+    config = config_manager.config
+    uvicorn.run(app, host=config['api']['host'], port=config['api']['port'], reload=False)
 
 if __name__ == "__main__":
     main()

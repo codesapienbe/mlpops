@@ -3,6 +3,8 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from prometheus_client import start_http_server, Summary, Gauge, Counter
+import mlflow
+from pathlib import Path
 
 from config import config_manager, setup_logger
 from core import RobustIngestion, LanguageAwareCleaner, MultiLangTrainer
@@ -138,9 +140,15 @@ class PipelineOrchestrator:
             raise RuntimeError("Cleaning must run before training")
         # Train and save model
         self.trainer = MultiLangTrainer(self.config)
-        X = self.cleaned_train_df[['experience', 'remote']]
+        X = self.cleaned_train_df[['experience', 'remote', 'clean_description']]
         y = self.cleaned_train_df[self.config['model']['target']]
+        # Log model training parameters to MLflow
+        mlflow.log_params(self.config.get('model', {}).get('params', {}))
         self.trainer.train_and_save(X, y)
+        # Log trained model artifact to MLflow
+        model_cfg = self.config.get('model', {})
+        model_path = Path(model_cfg.get('store_path', 'models')) / model_cfg.get('file_name', 'model.pkl')
+        mlflow.log_artifact(str(model_path), artifact_path="model")
         return {"trained_rows": len(self.cleaned_train_df)}
 
     def _run_evaluation(self):
@@ -149,52 +157,66 @@ class PipelineOrchestrator:
         if self.trainer is None or self.cleaned_test_df is None:
             raise RuntimeError("Training must run before evaluation")
         # Prepare test data
-        X_test = self.cleaned_test_df[['experience', 'remote']]
+        X_test = self.cleaned_test_df[['experience', 'remote', 'clean_description']]
         y_test = self.cleaned_test_df[self.config['model']['target']]
         # Evaluate model
         accuracy, report, roc_auc = self.trainer.evaluate_model(X_test, y_test)
+        # Log evaluation metrics to MLflow
+        mlflow.log_metric("accuracy", accuracy)
+        mlflow.log_metric("roc_auc", roc_auc)
         logger.info(f"Evaluation metrics: accuracy={accuracy}, roc_auc={roc_auc}")
         return {"accuracy": accuracy, "roc_auc": roc_auc, "report": report}
 
 @TRAIN_TIME.time()
 def run_pipeline():
     """Main pipeline execution function"""
-    try:
-        config = config_manager.config
-        logger.info("🚀 Starting pipeline execution")
-        start_time = time.time()
+    config = config_manager.config
+    # Start an MLflow run for the pipeline
+    with mlflow.start_run():
+        try:
+            logger.info("🚀 Starting pipeline execution")
+            start_time = time.time()
 
-        # Data Ingestion
-        with PipelineTelemetry().stage_start("ingestion"):
-            train_df, test_df = RobustIngestion(config).load_data()
-            DATA_GAUGE.labels('raw').set(len(train_df))
+            # Data Ingestion
+            with PipelineTelemetry().stage_start("ingestion"):
+                train_df, test_df = RobustIngestion(config).load_data()
+                DATA_GAUGE.labels('raw').set(len(train_df))
 
-        # Data Cleaning
-        with PipelineTelemetry().stage_start("cleaning"):
-            cleaner = LanguageAwareCleaner(config)
-            cleaned_df = cleaner.clean_data(train_df)
-            test_cleaned = cleaner.clean_data(test_df)
-            DATA_GAUGE.labels('cleaned').set(len(cleaned_df))
+            # Data Cleaning
+            with PipelineTelemetry().stage_start("cleaning"):
+                cleaner = LanguageAwareCleaner(config)
+                cleaned_df = cleaner.clean_data(train_df)
+                test_cleaned = cleaner.clean_data(test_df)
+                DATA_GAUGE.labels('cleaned').set(len(cleaned_df))
 
-        # Model Training
-        with PipelineTelemetry().stage_start("training"):
-            trainer = MultiLangTrainer(config)
-            X = cleaned_df[['experience', 'remote']]
-            y = cleaned_df[config['model']['target']]
-            trainer.train_and_save(X, y)
+            # Model Training
+            with PipelineTelemetry().stage_start("training"):
+                trainer = MultiLangTrainer(config)
+                X = cleaned_df[['experience', 'remote', 'clean_description']]
+                y = cleaned_df[config['model']['target']]
+                # Log model training parameters to MLflow
+                mlflow.log_params(config.get('model', {}).get('params', {}))
+                trainer.train_and_save(X, y)
+                # Log trained model artifact to MLflow
+                model_cfg = config.get('model', {})
+                model_path = Path(model_cfg.get('store_path', 'models')) / model_cfg.get('file_name', 'model.pkl')
+                mlflow.log_artifact(str(model_path), artifact_path="model")
 
-        # Model Evaluation
-        with PipelineTelemetry().stage_start("evaluation"):
-            X_test = test_cleaned[['experience', 'remote']]
-            y_test = test_cleaned[config['model']['target']]
-            accuracy, report, roc_auc = trainer.evaluate_model(X_test, y_test)
-            logger.info(f"Evaluation metrics: accuracy={accuracy}, roc_auc={roc_auc}")
+            # Model Evaluation
+            with PipelineTelemetry().stage_start("evaluation"):
+                X_test = test_cleaned[['experience', 'remote', 'clean_description']]
+                y_test = test_cleaned[config['model']['target']]
+                accuracy, report, roc_auc = trainer.evaluate_model(X_test, y_test)
+                # Log evaluation metrics to MLflow
+                mlflow.log_metric("accuracy", accuracy)
+                mlflow.log_metric("roc_auc", roc_auc)
+                logger.info(f"Evaluation metrics: accuracy={accuracy}, roc_auc={roc_auc}")
 
-        logger.info(f"✅ Pipeline completed in {time.time()-start_time:.2f}s")
-        
-    except Exception as e:
-        logger.error(f"❌ Pipeline failed: {str(e)}", exc_info=True)
-        raise
+            logger.info(f"✅ Pipeline completed in {time.time()-start_time:.2f}s")
+            
+        except Exception as e:
+            logger.error(f"❌ Pipeline failed: {str(e)}", exc_info=True)
+            raise
 
 def main():
     """Entry point for the pipeline script"""

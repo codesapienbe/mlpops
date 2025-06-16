@@ -24,3 +24,9 @@ models/
 *.ipr
 *.iws
 .idea_modules/
+
+# MLFlow
+mlruns/
+
+# Prometheus
+prometheus/

@@ -1,5 +1,5 @@
 data:
-  raw_path: "/app/data/raw"
+  raw_path: "data/raw"
   jobs_file: "jobs.csv"
 
 model:
@@ -22,7 +22,7 @@ language_configs:
     remote_keywords: ["remote", "work from home", "telecommute"]
 
 api:
-  host: "0.0.0.0"
+  host: "localhost"
   port: 8000
   analyze_endpoint: "/analyze"
   batch_analyze_endpoint: "/batch-analyze"

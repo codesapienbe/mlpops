@@ -18,6 +18,7 @@ from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 from nltk.tokenize import RegexpTokenizer
 from prometheus_client import Histogram
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 from config import setup_logger, DataValidationError, ModelTrainingError, PredictionError
 
@@ -165,13 +166,13 @@ class MultiLangTrainer:
         """Build ML pipeline"""
         try:
             preprocessor = ColumnTransformer([
+                ('tfidf', TfidfVectorizer(max_features=500), 'clean_description'),
                 ('minmax', MinMaxScaler(), ['experience']),
                 ('onehot', OneHotEncoder(handle_unknown='ignore'), ['remote'])
             ])
 
             return Pipeline([
                 ('preprocessor', preprocessor),
-                ('smote', SMOTE(random_state=42)),
                 ('model', RandomForestClassifier(**self.config.get('model', {}).get('params', {})))
             ])
         except Exception as e:
@@ -252,6 +253,8 @@ class Predictor:
             self.pipeline = None
         
         self.cleaner = LanguageAwareCleaner(config)
+        # Store prediction target
+        self.target = config.get('model', {}).get('target')
 
     @log_call
     def _prepare_features(self, job):
@@ -269,7 +272,7 @@ class Predictor:
             }])
             
             cleaned = self.cleaner.clean_data(df)
-            return cleaned[['experience', 'remote']]
+            return cleaned[['experience', 'remote', 'clean_description']]
             
         except Exception as e:
             logger.error(f'Feature preparation failed: {str(e)}')
@@ -278,6 +281,13 @@ class Predictor:
     @log_call
     def predict_single(self, job):
         """Predict single job"""
+        # If target is direct requirement count, compute and return
+        if self.target == 'requirements_count':
+            try:
+                # Count comma-separated requirements
+                return len(str(job.requirements).split(','))
+            except Exception as e:
+                raise PredictionError(f"Failed to compute requirements count: {e}")
         if self.pipeline is None:
             raise PredictionError("Model not loaded; cannot perform prediction")
         try:
@@ -290,6 +300,12 @@ class Predictor:
     @log_call
     def predict_batch(self, jobs):
         """Predict batch of jobs"""
+        # If target is direct requirement count, compute and return list of counts
+        if self.target == 'requirements_count':
+            try:
+                return [len(str(j.requirements).split(',')) for j in jobs]
+            except Exception as e:
+                raise PredictionError(f"Failed to compute requirements count batch: {e}")
         if self.pipeline is None:
             raise PredictionError("Model not loaded; cannot perform batch prediction")
         try:
@@ -303,7 +319,7 @@ class Predictor:
             } for j in jobs])
             
             cleaned = self.cleaner.clean_data(df)
-            X = cleaned[['experience', 'remote']]
+            X = cleaned[['experience', 'remote', 'clean_description']]
             return self.pipeline.predict(X)
             
         except Exception as e:
