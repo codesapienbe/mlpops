@@ -12,15 +12,13 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml uv.lock ./
 COPY config.yml .
 COPY src/ ./src/
-RUN uv sync --frozen
-
-# Download NLTK data
-RUN python -c "import nltk; nltk.download(['punkt', 'stopwords', 'wordnet', 'omw-1.4'], quiet=True)"
-
-# Copy application code
+RUN uv sync
 
 # Create directories
 RUN mkdir -p /app/models /app/data
+
+# Download NLTK data (after packages are installed)
+RUN uv run python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('omw-1.4', quiet=True)"
 
 # Create sample data
 RUN echo 'job_title,company,location,description,requirements,posted_date,salary_category' > /app/data/jobs.csv && \
