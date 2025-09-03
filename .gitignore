@@ -30,3 +30,5 @@ mlruns/
 
 # Prometheus
 prometheus/
+docs/NOTES.pdf
+docs/NOTES.md

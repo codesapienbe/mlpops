@@ -1,0 +1,6 @@
+job_title,company,location,description,requirements,experience_years,posted_date
+MLOps Architect,NeuralEdge,Brussels BE,"Design scalable MLOps platforms and governance.","7+ years Python, Kubernetes, MLflow, IaC",7,2024-04-06
+Site Reliability Engineer,CloudStride,Antwerp BE,"Improve reliability and performance for AI services.","SRE, Prometheus, Grafana, Terraform",6,2024-04-07
+Machine Learning Engineer,VisionX,Ghent BE,"Deploy computer vision models to production.","PyTorch, ONNX, FastAPI, CI/CD",4,2024-04-08
+Platform Engineer,CoreSystems,Leuven BE,"Build developer platforms and golden paths.","Backstage, Kubernetes, ArgoCD, GitOps",5,2024-04-09
+Data Platform Engineer,DeltaData,Bruges BE,"Own data platform, ingestion to serving.","Spark, Kafka, Lakehouse, DBT",5,2024-04-10 
