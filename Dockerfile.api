@@ -6,6 +6,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
+    wget \
+    git \
+    bash \
+    vim \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,27 +21,22 @@ ENV PATH="/root/.local/bin:${PATH}"
 COPY pyproject.toml ./
 COPY uv.lock ./
 
-# Install Python dependencies using pip (more reliable in Docker)
-RUN pip install --no-cache-dir fastapi uvicorn pandas numpy scikit-learn networkx nltk dvc[s3] fsspec imbalanced-learn pyyaml python-dotenv mlflow prometheus-client joblib pydantic tqdm streamlit
+# Install Python dependencies using uv (consistent with local development)
+RUN uv sync --frozen
 
 # Copy source code and config
-COPY config.yml .
 COPY src/ ./src/
+COPY config.yml ./
+
+# Copy data files
+COPY data/ ./data/
 
 # Create directories
-RUN mkdir -p /app/models /app/data
+RUN mkdir -p /app/models /app/data/raw /app/data/processed
 
-# Download NLTK data (after packages are installed)
-RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('omw-1.4', quiet=True)"
-
-# Create sample data
-RUN echo 'job_title,company,location,description,requirements,posted_date,salary_category' > /app/data/jobs.csv && \
-    echo 'Software Engineer,TechCorp,Remote,Python development remote work,3 years experience required,2024-01-01,1' >> /app/data/jobs.csv && \
-    echo 'Data Scientist,DataCo,New York,Machine learning position,5 years experience needed,2024-01-02,1' >> /app/data/jobs.csv && \
-    echo 'Junior Developer,StartupX,Austin,Entry level position,1 year experience,2024-01-03,0' >> /app/data/jobs.csv && \
-    echo 'Senior Engineer,BigTech,Seattle,Lead development role,7 years experience required,2024-01-04,1' >> /app/data/jobs.csv && \
-    echo 'Intern,LocalCorp,Chicago,Summer internship program,No experience required,2024-01-05,0' >> /app/data/jobs.csv
+# Download NLTK data using uv (consistent with local development)
+RUN uv run python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('omw-1.4', quiet=True)"
 
 EXPOSE 8000
 
-CMD ["python", "-m", "src.api"]
+CMD ["uv", "run", "python", "-m", "src.api"]
