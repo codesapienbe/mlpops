@@ -20,12 +20,13 @@ ENV PATH="/root/.local/bin:${PATH}"
 # Copy dependency files first for better caching
 COPY pyproject.toml ./
 COPY uv.lock ./
+COPY README.md ./
+COPY src/ ./src/
 
 # Install Python dependencies using uv (consistent with local development)
 RUN uv sync --frozen
 
 # Copy source code and config
-COPY src/ ./src/
 COPY config.yml ./
 
 # Copy data files
