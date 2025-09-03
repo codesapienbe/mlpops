@@ -3,7 +3,7 @@ data:
   jobs_file: "jobs.csv"
 
 model:
-  target: "requirements"
+  target: "experience_years"
   store_path: "models"
   file_name: "model.pkl"
   params:

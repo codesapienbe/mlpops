@@ -52,7 +52,7 @@ class RobustIngestion:
         self.config = config
         self.required_columns = {
             'job_title', 'company', 'location',
-            'description', 'requirements', 'posted_date'
+            'description', 'requirements', 'experience_years', 'posted_date'
         }
 
     @log_call
@@ -117,6 +117,48 @@ class LanguageAwareCleaner:
         
         return ' '.join(words)
 
+    def _parse_experience_years(self, text: str, exp_pattern: str) -> int:
+        """Parse years of experience from free text robustly.
+        Handles forms like '5+ years', '3 years', '2 yrs', '2-4 years', 'at least 3 years',
+        and spelled numbers like 'three years'. Returns an integer in [0, 50].
+        """
+        if not isinstance(text, str) or not text:
+            return 0
+        lower = text.lower()
+        # Spelled-out numbers mapping (basic)
+        words_to_nums = {
+            'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+            'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+            'eleven': 11, 'twelve': 12
+        }
+        for word, num in words_to_nums.items():
+            lower = re.sub(rf"\b{word}\b", str(num), lower)
+        # Ranges like 2-4 years -> take lower bound
+        m = re.search(r"(\d+)\s*[-to]{1,3}\s*(\d+)\s*(?:years?|yrs?)", lower)
+        if m:
+            try:
+                val = int(m.group(1))
+                return max(0, min(val, 50))
+            except Exception:
+                pass
+        # 5+ years / 5 yrs / at least 5 years
+        m = re.search(r"(?:at least\s*)?(\d+)\s*(?:\+?\s*)?(?:years?|yrs?)", lower)
+        if m:
+            try:
+                val = int(m.group(1))
+                return max(0, min(val, 50))
+            except Exception:
+                pass
+        # Fallback single number before 'year'
+        m = re.search(exp_pattern, lower)
+        if m:
+            try:
+                val = int(m.group(1))
+                return max(0, min(val, 50))
+            except Exception:
+                pass
+        return 0
+
     @log_call
     def _extract_features(self, df):
         """Extract features from text data"""
@@ -127,13 +169,23 @@ class LanguageAwareCleaner:
         df = df.copy()
         df['clean_description'] = df['description'].apply(self._clean_text)
         
-        # Extract experience (default pattern if not configured)
+        # Experience years: prefer provided numeric column; otherwise parse from requirements
         exp_pattern = lang_config.get('experience_pattern', r'(\d+)\s*(?:years?|yrs?)')
-        df['experience'] = df['requirements'].str.extract(exp_pattern).fillna(0).astype(int)
+        if 'experience_years' in df.columns:
+            df['experience_years'] = pd.to_numeric(df['experience_years'], errors='coerce').fillna(0)
+        else:
+            df['experience_years'] = 0
+        parsed_years = df['requirements'].fillna('').apply(lambda t: self._parse_experience_years(t, exp_pattern))
+        mask = (df['experience_years'] == 0) & (parsed_years > 0)
+        # Align dtypes to avoid pandas FutureWarning by assigning as floats, then cast to int at the end
+        df['experience_years'] = df['experience_years'].astype(float)
+        df.loc[mask, 'experience_years'] = parsed_years.loc[mask].astype(float)
+        df['experience_years'] = df['experience_years'].fillna(0).astype(int)
         
-        # Extract remote keywords
+        # Remote detection from both description and requirements
         remote_keywords = lang_config.get('remote_keywords', ['remote', 'work from home', 'telecommute'])
-        df['remote'] = df['description'].str.contains('|'.join(remote_keywords), case=False, na=False)
+        combined_text = (df['description'].fillna('') + ' ' + df['requirements'].fillna('')).str.lower()
+        df['remote'] = combined_text.str.contains('|'.join(remote_keywords), case=False, na=False)
         
         return df
 
@@ -143,9 +195,9 @@ class LanguageAwareCleaner:
         try:
             df = self._extract_features(df)
             
-            if df[['experience', 'remote']].isnull().sum().sum() > 0:
+            if df[['experience_years', 'remote']].isnull().sum().sum() > 0:
                 logger.warning("Some null values found in extracted features")
-                df['experience'] = df['experience'].fillna(0)
+                df['experience_years'] = df['experience_years'].fillna(0)
                 df['remote'] = df['remote'].fillna(False)
             
             return df
@@ -167,7 +219,7 @@ class MultiLangTrainer:
         try:
             preprocessor = ColumnTransformer([
                 ('tfidf', TfidfVectorizer(max_features=500), 'clean_description'),
-                ('minmax', MinMaxScaler(), ['experience']),
+                ('minmax', MinMaxScaler(), ['experience_years']),
                 ('onehot', OneHotEncoder(handle_unknown='ignore'), ['remote'])
             ])
 
@@ -268,11 +320,12 @@ class Predictor:
                 'location': job.location,
                 'description': job.description,
                 'requirements': job.requirements,
+                'experience_years': 0,  # Default value for new jobs
                 'posted_date': job.posted_date
             }])
             
             cleaned = self.cleaner.clean_data(df)
-            return cleaned[['experience', 'remote', 'clean_description']]
+            return cleaned[['experience_years', 'remote', 'clean_description']]
             
         except Exception as e:
             logger.error(f'Feature preparation failed: {str(e)}')
@@ -281,12 +334,6 @@ class Predictor:
     @log_call
     def predict_single(self, job):
         """Predict single job"""
-        if self.target in ('requirements', 'requirements_count'):
-            try:
-                # Count comma-separated requirements
-                return len(str(job.requirements).split(','))
-            except Exception as e:
-                raise PredictionError(f"Failed to compute requirements count: {e}")
         if self.pipeline is None:
             raise PredictionError("Model not loaded; cannot perform prediction")
         try:
@@ -299,11 +346,6 @@ class Predictor:
     @log_call
     def predict_batch(self, jobs):
         """Predict batch of jobs"""
-        if self.target in ('requirements', 'requirements_count'):
-            try:
-                return [len(str(j.requirements).split(',')) for j in jobs]
-            except Exception as e:
-                raise PredictionError(f"Failed to compute requirements count batch: {e}")
         if self.pipeline is None:
             raise PredictionError("Model not loaded; cannot perform batch prediction")
         try:
@@ -313,22 +355,27 @@ class Predictor:
                 'location': j.location,
                 'description': j.description,
                 'requirements': j.requirements,
+                'experience_years': 0,  # Default value for new jobs
                 'posted_date': j.posted_date
             } for j in jobs])
             
             cleaned = self.cleaner.clean_data(df)
-            X = cleaned[['experience', 'remote', 'clean_description']]
+            X = cleaned[['experience_years', 'remote', 'clean_description']]
             return self.pipeline.predict(X)
             
         except Exception as e:
             logger.error(f'Batch prediction failed: {str(e)}')
             raise PredictionError(f"Failed to predict batch: {str(e)}")
 
+    @log_call
     def evaluate_model(self, X_test, y_test):
         """Evaluate model performance"""
+        if self.pipeline is None:
+            raise ModelTrainingError("Model not loaded; cannot evaluate")
+        model = self.pipeline
         try:
-            y_pred = self.pipeline.predict(X_test)
-            y_proba = self.pipeline.predict_proba(X_test)[:, 1] if hasattr(self.pipeline, 'predict_proba') else None
+            y_pred = model.predict(X_test)
+            y_proba = model.predict_proba(X_test)[:, 1] if hasattr(model, 'predict_proba') else None
             
             accuracy = accuracy_score(y_test, y_pred)
             roc_auc = roc_auc_score(y_test, y_proba) if y_proba is not None else 0.0
@@ -337,5 +384,5 @@ class Predictor:
             return accuracy, report, roc_auc
             
         except Exception as e:
-            logger.error(f'Model evaluation failed: {str(e)}')
-            return 0.0, {}, 0.0
+            logger.error(f'Evaluation failed: {e}', exc_info=True)
+            raise ModelTrainingError(f"Failed to evaluate model: {e}")

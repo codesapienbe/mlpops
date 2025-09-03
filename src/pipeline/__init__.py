@@ -140,7 +140,7 @@ class PipelineOrchestrator:
             raise RuntimeError("Cleaning must run before training")
         # Train and save model
         self.trainer = MultiLangTrainer(self.config)
-        X = self.cleaned_train_df[['experience', 'remote', 'clean_description']]
+        X = self.cleaned_train_df[['experience_years', 'remote', 'clean_description']]
         y = self.cleaned_train_df[self.config['model']['target']]
         # Log model training parameters to MLflow
         mlflow.log_params(self.config.get('model', {}).get('params', {}))
@@ -157,7 +157,7 @@ class PipelineOrchestrator:
         if self.trainer is None or self.cleaned_test_df is None:
             raise RuntimeError("Training must run before evaluation")
         # Prepare test data
-        X_test = self.cleaned_test_df[['experience', 'remote', 'clean_description']]
+        X_test = self.cleaned_test_df[['experience_years', 'remote', 'clean_description']]
         y_test = self.cleaned_test_df[self.config['model']['target']]
         # Evaluate model
         accuracy, report, roc_auc = self.trainer.evaluate_model(X_test, y_test)
@@ -192,7 +192,7 @@ def run_pipeline():
             # Model Training
             with PipelineTelemetry().stage_start("training"):
                 trainer = MultiLangTrainer(config)
-                X = cleaned_df[['experience', 'remote', 'clean_description']]
+                X = cleaned_df[['experience_years', 'remote', 'clean_description']]
                 y = cleaned_df[config['model']['target']]
                 # Log model training parameters to MLflow
                 mlflow.log_params(config.get('model', {}).get('params', {}))
@@ -204,7 +204,7 @@ def run_pipeline():
 
             # Model Evaluation
             with PipelineTelemetry().stage_start("evaluation"):
-                X_test = test_cleaned[['experience', 'remote', 'clean_description']]
+                X_test = test_cleaned[['experience_years', 'remote', 'clean_description']]
                 y_test = test_cleaned[config['model']['target']]
                 accuracy, report, roc_auc = trainer.evaluate_model(X_test, y_test)
                 # Log evaluation metrics to MLflow

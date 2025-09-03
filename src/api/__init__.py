@@ -74,25 +74,29 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def monitor_requests(request: Request, call_next):
         start_time = time.time()
+        status_code = None
         response = None
         try:
             response = await call_next(request)
             status_code = response.status_code
-        except Exception:
+            return response
+        except Exception as exc:
             status_code = 500
-            
-        duration = time.time() - start_time
-        endpoint = request.url.path
-        
-        REQUEST_COUNTER.labels(
-            method=request.method,
-            endpoint=endpoint,
-            status=status_code
-        ).inc()
-        REQUEST_TIME.labels(endpoint=endpoint).observe(duration)
-        
-        logger.info(f"{request.method} {endpoint} - {status_code} - {duration:.3f}s")
-        return response
+            logger.error("Unhandled exception during request processing", exc_info=True)
+            # Re-raise to allow registered exception handlers to generate the response
+            raise
+        finally:
+            duration = time.time() - start_time
+            endpoint = request.url.path
+
+            REQUEST_COUNTER.labels(
+                method=request.method,
+                endpoint=endpoint,
+                status=status_code if status_code is not None else 500
+            ).inc()
+            REQUEST_TIME.labels(endpoint=endpoint).observe(duration)
+
+            logger.info(f"{request.method} {endpoint} - {status_code if status_code is not None else 500} - {duration:.3f}s")
     
     @app.middleware("http")
     async def validate_requests(request: Request, call_next):
@@ -152,7 +156,7 @@ def create_app() -> FastAPI:
             predictions = app_state['predictor'].predict_batch(batch.jobs)
             logger.info(f"Batch prediction output: {predictions}")
             PREDICTION_GAUGE.labels(type='batch').inc()
-            return {"predictions": list(predictions)}
+            return {"predictions": [int(p) for p in predictions]}
         except Exception as e:
             logger.error(f'Batch prediction failed: {str(e)}', exc_info=True)
             raise PredictionError(str(e))

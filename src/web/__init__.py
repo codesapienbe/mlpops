@@ -59,7 +59,7 @@ class WebApp:
         st.header("📊 Job Analysis Dashboard")
         
         # Select analysis metric
-        metric_option = st.selectbox("Select metric to analyze", ["Requirements Count", "Experience", "Remote"], index=0)
+        metric_option = st.selectbox("Select metric to analyze", ["Experience Years", "Remote"], index=0)
         
         # Single job analysis
         with st.expander("🔍 Single Job Analysis", expanded=True):
@@ -78,21 +78,19 @@ class WebApp:
             if st.button("Analyze Single Job"):
                 if all([job_title, company, location, description, requirements]):
                     # Compute selected metric locally
-                    if metric_option == "Requirements Count":
-                        count = len(requirements.split(","))
-                        st.metric("Requirements Count", count)
-                    elif metric_option == "Experience":
+                    if metric_option == "Experience Years":
                         df_tmp = pd.DataFrame([{ 
                             'job_title': job_title,
                             'company': company,
                             'location': location,
                             'description': description,
                             'requirements': requirements,
+                            'experience_years': 0,  # Default for new jobs
                             'posted_date': str(posted_date)
                         }])
                         cleaner = LanguageAwareCleaner(self.config)
                         cleaned = cleaner.clean_data(df_tmp)
-                        exp_val = cleaned['experience'].iloc[0]
+                        exp_val = cleaned['experience_years'].iloc[0]
                         st.metric("Experience (years)", exp_val)
                     elif metric_option == "Remote":
                         df_tmp = pd.DataFrame([{ 
@@ -101,6 +99,7 @@ class WebApp:
                             'location': location,
                             'description': description,
                             'requirements': requirements,
+                            'experience_years': 0,  # Default for new jobs
                             'posted_date': str(posted_date)
                         }])
                         cleaner = LanguageAwareCleaner(self.config)

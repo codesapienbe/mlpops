@@ -5,7 +5,6 @@ Welcome to your interactive **MLOps playground**! Upload job data and instantly 
 🎯 **Key Features**
 
 - 📥 **Upload & Analyze** your `jobs.csv`
-- 🤖 **Scrape** Belgian job sites automatically
 - 🔄 **Monitor** pipeline stages: Ingest → Clean → Train → Predict
 - 📖 **Read** quick documentation right here
 
@@ -14,6 +13,7 @@ Welcome to your interactive **MLOps playground**! Upload job data and instantly 
 ## Prerequisites
 
 - Python 3.11+
+- uv package manager
 - Terraform (for infrastructure deployment)
 - AWS CLI (for cloud deployment)
 - AWS Account (for cloud deployment)
@@ -25,55 +25,20 @@ Welcome to your interactive **MLOps playground**! Upload job data and instantly 
 ```bash
 # Setup the environment
 cd mlops-exam
-# On Linux/Mac
-./setup.sh
-# On Windows
-setup.bat
-
-# Activate the virtual environment
-# On Linux/Mac
-source .venv/bin/activate
-# On Windows
-.venv\Scripts\activate.bat
-
-# Scrape job listings from Belgian job sites
-python -m src.scrape
+# Install dependencies using uv
+uv sync
 
 # Run the full pipeline
-python src/main.py
+uv run train
 
 # Start the FastAPI server
-python -m src.api
+uv run api
 
 # Launch the Streamlit dashboard
-python -m src.web
+uv run web
 ```
 
 Open your browser at <http://localhost:8501> to start exploring!
-
----
-
-## 🤖 Job Scraping Feature
-
-The application includes an automated scraper for collecting job listings from popular Belgian job sites:
-
-- VDAB
-- Jobat
-- ICTJobs
-
-To run the scraper:
-
-```bash
-python -m src.scrape
-```
-
-This will:
-1. Connect to each job site
-2. Extract job listings using AI
-3. Save the data to the configured location in `config.yml`
-4. Process the text according to the configured language settings
-
-The scraper supports multiple languages and can be configured in the `config.yml` file.
 
 ---
 
@@ -92,7 +57,6 @@ requirements:
   - nltk
   - dvc
   - mlflow
-  - crawl4ai
 ```  
 
 ```console
@@ -100,17 +64,10 @@ requirements:
 ├─ src/
 │  ├─ pipeline/ (ingest, clean, train, predict)
 │  ├─ api/      (FastAPI endpoints)
-│  ├─ web/      (Streamlit dashboard)
-│  └─ scrape/   (job scraping functionality)
+│  └─ web/      (Streamlit dashboard)
 ├─ config.yml   (settings)
 ├─ Dockerfile   (container setup)
 └─ README.md    (this guide)
-```
-
-🐛 **Troubleshooting**: If you run into errors with the scraper, ensure you've installed the browser dependencies:
-
-```bash
-python -m playwright install --with-deps chromium
 ```
 
 ---

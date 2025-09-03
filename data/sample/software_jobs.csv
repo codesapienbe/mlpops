@@ -1,0 +1,6 @@
+job_title,company,location,description,requirements,experience_years,posted_date
+MLOps Software Engineer,Acme AI,Brussels BE,"Build and maintain ML pipelines using Kubernetes and MLflow.","5+ years Python, 2+ years Kubernetes, CI/CD experience",5,2024-04-01
+Data Engineer,DataWorks,Antwerp BE,"Develop ETL pipelines and data lake solutions.","4 years data engineering, Python, SQL, Spark",4,2024-04-02
+AI Research Scientist,DeepLab,Ghent BE,"Research NLP models and publish results.","PhD in AI/ML, publications",0,2024-04-03
+Backend Developer,CloudApps,Leuven BE,"Develop APIs and microservices with FastAPI.","3+ years Python, REST, Docker",3,2024-04-04
+DevOps Engineer,SkyOps,Brussels BE,"Manage cloud infra, IaC, observability.","Kubernetes, Terraform, 5+ years DevOps",5,2024-04-05
