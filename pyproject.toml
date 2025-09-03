@@ -31,9 +31,9 @@ dependencies = [
 ]
 
 [project.scripts]
-api = "src.api:main"
-web = "src.web:cli_main"
-train = "src.pipeline:main"
+api = "api:main"
+web = "web:cli_main"
+train = "pipeline:main"
 
 [build-system]
 requires = [

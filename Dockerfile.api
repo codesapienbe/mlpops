@@ -40,4 +40,4 @@ RUN uv run python -c "import nltk; nltk.download('punkt', quiet=True); nltk.down
 
 EXPOSE 8000
 
-CMD ["uv", "run", "python", "-m", "src.api"]
+CMD ["uv", "run", "api"]

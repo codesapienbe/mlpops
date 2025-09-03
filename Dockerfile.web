@@ -36,4 +36,4 @@ RUN mkdir -p /app/models /app/data/raw /app/data/processed
 
 EXPOSE 8501
 
-CMD ["uv", "run", "python", "-m", "src.web"]
+CMD ["uv", "run", "web"]
