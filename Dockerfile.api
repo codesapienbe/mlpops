@@ -10,14 +10,14 @@ RUN apt-get update && apt-get install -y \
 # Install uv and Python packages
 RUN pip install --no-cache-dir uv
 COPY pyproject.toml uv.lock ./
+COPY config.yml .
+COPY src/ ./src/
 RUN uv sync --frozen
 
 # Download NLTK data
 RUN python -c "import nltk; nltk.download(['punkt', 'stopwords', 'wordnet', 'omw-1.4'], quiet=True)"
 
 # Copy application code
-COPY src/ ./src/
-COPY config.yml .
 
 # Create directories
 RUN mkdir -p /app/models /app/data
