@@ -30,4 +30,4 @@ RUN echo 'job_title,company,location,description,requirements,posted_date,salary
 
 EXPOSE 8000
 
-CMD ["python", "-m", "src.api"]
+CMD ["uv", "run", "api"]

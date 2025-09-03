@@ -5,11 +5,10 @@ WORKDIR /app
 # Install uv and Python packages
 RUN pip install --no-cache-dir uv
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen
-
 COPY src/ ./src/
 COPY config.yml .
+RUN uv sync
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "src/web/__init__.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["uv", "run", "web"]
