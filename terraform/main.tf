@@ -152,18 +152,72 @@ resource "azurerm_linux_virtual_machine" "mlops" {
 
   custom_data = base64encode(<<-EOF
     #!/bin/bash
+    set -e
+    
+    # Update system and install dependencies
     apt-get update
-    apt-get install -y docker.io docker-compose git
+    apt-get install -y docker.io docker-compose git curl
+    
+    # Start and enable Docker
     systemctl start docker
     systemctl enable docker
     usermod -aG docker azureuser
     
+    # Clone repository
     cd /home/azureuser
-    git clone https://github.com/codesapienbe/mlpops.git
+    if [ ! -d "mlpops" ]; then
+      git clone https://github.com/codesapienbe/mlpops.git
+    else
+      cd mlpops
+      git pull origin main || true
+      cd ..
+    fi
+    
     cd mlpops
     chown -R azureuser:azureuser /home/azureuser/mlpops
     
+    # Wait for Docker to be ready
+    echo "Waiting for Docker to be ready..."
+    timeout 60 bash -c 'until docker info > /dev/null 2>&1; do sleep 2; done'
+    
+    # Build and start containers
+    echo "Building and starting containers..."
+    sudo -u azureuser docker-compose build --no-cache
     sudo -u azureuser docker-compose up -d
+    
+    # Wait for services to be ready
+    echo "Waiting for services to be ready..."
+    sleep 60
+    
+    # Verify services are running
+    echo "Verifying services..."
+    sudo -u azureuser docker-compose ps
+    
+    # Create a simple health check endpoint
+    echo "Setting up health monitoring..."
+    cat > /home/azureuser/mlpops/health_check.sh << 'HEALTH_EOF'
+#!/bin/bash
+while true; do
+  if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+    echo "$(date): API is healthy"
+  else
+    echo "$(date): API health check failed"
+  fi
+  
+  if curl -f http://localhost:8501 > /dev/null 2>&1; then
+    echo "$(date): Web UI is healthy"
+  else
+    echo "$(date): Web UI health check failed"
+  fi
+  
+  sleep 30
+done
+HEALTH_EOF
+    
+    chmod +x /home/azureuser/mlpops/health_check.sh
+    sudo -u azureuser nohup /home/azureuser/mlpops/health_check.sh > /home/azureuser/mlpops/health.log 2>&1 &
+    
+    echo "Deployment completed successfully!"
   EOF
   )
 

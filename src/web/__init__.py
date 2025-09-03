@@ -18,6 +18,21 @@ class WebApp:
         self.config = config_manager.config
         self.web_cfg = self.config.get('web', {})
         self.api_cfg = self.config.get('api', {})
+        
+        # Determine API base URL - check if running in Docker or externally
+        import os
+        self.api_base_url = os.environ.get('API_URL')
+        if not self.api_base_url:
+            # Fallback to config or external IP
+            host = self.api_cfg.get('host', '0.0.0.0')
+            port = self.api_cfg.get('port', 8000)
+            # If host is 0.0.0.0, we need to determine the actual external IP
+            if host == '0.0.0.0':
+                # Try to get external IP from environment or use localhost as fallback
+                external_ip = os.environ.get('EXTERNAL_IP', 'localhost')
+                self.api_base_url = f"http://{external_ip}:{port}"
+            else:
+                self.api_base_url = f"http://{host}:{port}"
     
     def run(self):
         """Main application entry point"""
@@ -137,7 +152,7 @@ class WebApp:
         """Analyze single job via API"""
         try:
             with st.spinner("Analyzing job..."):
-                url = f"http://{self.api_cfg.get('host', 'localhost')}:{self.api_cfg.get('port', 8000)}/analyze"
+                url = f"{self.api_base_url}/analyze"
                 response = requests.post(url, json=job_data, timeout=30)
                 response.raise_for_status()
                 
@@ -165,7 +180,7 @@ class WebApp:
         try:
             with st.spinner("Analyzing batch jobs..."):
                 jobs_data = df.to_dict(orient="records")
-                url = f"http://{self.api_cfg.get('host', 'localhost')}:{self.api_cfg.get('port', 8000)}/batch-analyze"
+                url = f"{self.api_base_url}/batch-analyze"
                 
                 response = requests.post(url, json={"jobs": jobs_data}, timeout=60)
                 response.raise_for_status()
@@ -201,7 +216,7 @@ class WebApp:
         st.header("�� Pipeline Status")
         try:
             with st.spinner("Running pipeline evaluation..."):
-                url = f"http://{self.api_cfg.get('host','localhost')}:{self.api_cfg.get('port',8000)}/evaluate"
+                url = f"{self.api_base_url}/evaluate"
                 response = requests.post(url, timeout=120)
                 response.raise_for_status()
                 data = response.json()
@@ -240,7 +255,7 @@ class WebApp:
         for endpoint, desc, details in endpoints:
             with st.expander(f"`{endpoint}` - {desc}"):
                 st.markdown(f"**Description:** {details}")
-                st.code(f"curl -X POST http://localhost:8000{endpoint.split()[1]}")
+                st.code(f"curl -X POST {self.api_base_url}{endpoint.split()[1]}")
         
         # Configuration
         st.subheader("⚙️ Configuration")

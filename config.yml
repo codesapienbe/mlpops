@@ -22,7 +22,7 @@ language_configs:
     remote_keywords: ["remote", "work from home", "telecommute"]
 
 api:
-  host: "localhost"
+  host: "0.0.0.0"
   port: 8000
   analyze_endpoint: "/analyze"
   batch_analyze_endpoint: "/batch-analyze"
