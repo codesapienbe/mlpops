@@ -31,7 +31,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    command: python -m src.pipeline
+    command: ["uv", "run", "train"]
     volumes:
       - ./models:/app/models
       - ./data:/app/data

@@ -7,18 +7,22 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv and Python packages
-RUN pip install --no-cache-dir uv
-COPY pyproject.toml uv.lock ./
+# Copy dependency files first for better caching
+COPY pyproject.toml ./
+COPY uv.lock ./
+
+# Install Python dependencies using pip (more reliable in Docker)
+RUN pip install --no-cache-dir fastapi uvicorn pandas numpy scikit-learn networkx nltk dvc[s3] fsspec imbalanced-learn pyyaml python-dotenv mlflow prometheus-client joblib pydantic tqdm streamlit
+
+# Copy source code and config
 COPY config.yml .
 COPY src/ ./src/
-RUN uv sync
 
 # Create directories
 RUN mkdir -p /app/models /app/data
 
 # Download NLTK data (after packages are installed)
-RUN uv run python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('omw-1.4', quiet=True)"
+RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('omw-1.4', quiet=True)"
 
 # Create sample data
 RUN echo 'job_title,company,location,description,requirements,posted_date,salary_category' > /app/data/jobs.csv && \
@@ -30,4 +34,4 @@ RUN echo 'job_title,company,location,description,requirements,posted_date,salary
 
 EXPOSE 8000
 
-CMD ["uv", "run", "api"]
+CMD ["python", "-m", "src.api"]

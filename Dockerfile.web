@@ -2,13 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install uv and Python packages
-RUN pip install --no-cache-dir uv
-COPY pyproject.toml uv.lock ./
+# Copy dependency files first for better caching
+COPY pyproject.toml ./
+COPY uv.lock ./
+
+# Install Python dependencies using pip (more reliable in Docker)
+RUN pip install --no-cache-dir fastapi uvicorn pandas numpy scikit-learn networkx nltk dvc[s3] fsspec imbalanced-learn pyyaml python-dotenv mlflow prometheus-client joblib pydantic tqdm streamlit
+
+# Copy source code and config
 COPY src/ ./src/
 COPY config.yml .
-RUN uv sync
 
 EXPOSE 8501
 
-CMD ["uv", "run", "web"]
+CMD ["python", "-m", "src.web"]
