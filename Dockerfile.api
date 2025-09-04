@@ -35,8 +35,8 @@ COPY data/ ./data/
 # Create directories
 RUN mkdir -p /app/models /app/data/raw /app/data/processed
 
-# Ensure required raw dataset is present inside the container
-COPY data/raw/jobs.csv /app/data/raw/jobs.csv
+# Ensure required raw dataset is present inside the container (fallback to sample if missing)
+RUN bash -lc "if [ ! -f /app/data/raw/jobs.csv ] && [ -f /app/data/sample/software_jobs.csv ]; then cp /app/data/sample/software_jobs.csv /app/data/raw/jobs.csv; fi"
 
 # Download NLTK data using uv (consistent with local development)
 RUN uv run python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('omw-1.4', quiet=True)"
