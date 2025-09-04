@@ -1,11 +1,11 @@
-# Use Python slim image as base (uv requires Python environment)
+# Use Python 3.11 slim as base image
 FROM python:3.11-slim
 
 # Set environment variables for non-interactive installation
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# Update package list and install system utilities
+# Install system utilities and build dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -19,28 +19,124 @@ RUN apt-get update && apt-get install -y \
 # Install uv using the official installer script
 RUN curl -fsSL https://astral.sh/uv/install.sh | bash
 
-# Add uv to PATH (installer puts it in ~/.local/bin)
+# Add uv to PATH
 ENV PATH="/root/.local/bin:$PATH"
 
-# Install uvx (if not included with uv installation)
-# Note: uvx might come with uv, but installing separately to ensure availability
-RUN /root/.local/bin/uv tool install uvx || pip install uvx
+# Create a Python 3.11 virtual environment
+RUN python3.11 -m venv /opt/venv
 
-# Set UV to use system Python (recommended for containers)
+# Activate the virtual environment by updating PATH
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip in the virtual environment
+RUN pip install --upgrade pip
+
+# Install uvx using uv tool install
+RUN uv tool install uvx
+
+# Install testing and verification packages
+RUN pip install \
+    pytest \
+    pytest-cov \
+    pytest-mock \
+    black \
+    flake8 \
+    mypy
+
+# Install Jupyter ecosystem
+RUN pip install \
+    jupyterlab \
+    jupyter \
+    ipykernel \
+    ipywidgets
+
+# Install core data science packages
+RUN pip install \
+    numpy \
+    pandas \
+    matplotlib \
+    seaborn \
+    plotly \
+    scikit-learn \
+    scipy \
+    statsmodels
+
+# Install additional useful packages
+RUN pip install \
+    requests \
+    beautifulsoup4 \
+    openpyxl \
+    python-dotenv \
+    pydantic \
+    click
+
+# Install MLOps dependencies
+RUN pip install \
+    mlflow \
+    wandb \
+    neptune \
+    hydra-core \
+    omegaconf \
+    dagster \
+    dagit \
+    prefect \
+    dvc \
+    great-expectations \
+    evidently \
+    feast \
+    bentoml \
+    kedro \
+    mlflow-skinny \
+    clearml
+
+# Install model deployment and serving tools
+RUN pip install \
+    fastapi \
+    uvicorn \
+    gunicorn \
+    streamlit \
+    gradio
+
+# Install cloud and infrastructure tools
+RUN pip install \
+    boto3 \
+    azure-storage-blob \
+    google-cloud-storage \
+    kubernetes
+
+# Configure Jupyter to work in container
+RUN jupyter lab --generate-config && \
+    echo "c.ServerApp.ip = '0.0.0.0'" >> /root/.jupyter/jupyter_lab_config.py && \
+    echo "c.ServerApp.allow_root = True" >> /root/.jupyter/jupyter_lab_config.py && \
+    echo "c.ServerApp.open_browser = False" >> /root/.jupyter/jupyter_lab_config.py
+
+# Set UV to work with system Python (recommended for containers)
 ENV UV_SYSTEM_PYTHON=1
 
-# Verify installations
-RUN uv --version && \
+# Create directories for MLOps workflows
+RUN mkdir -p /app/mlruns /app/artifacts /app/models /app/data
+
+# Verify all installations
+RUN python --version && \
+    uv --version && \
     uvx --version && \
-    curl --version && \
-    wget --version && \
-    git --version && \
-    vim --version && \
-    nano --version && \
-    jq --version
+    jupyter --version && \
+    pytest --version && \
+    mlflow --version && \
+    prefect version && \
+    dagster --version && \
+    echo "All tools including MLOps installed successfully!"
 
 # Set working directory
 WORKDIR /app
 
-# Default command
+# Expose ports for various services
+EXPOSE 8888  # Jupyter
+EXPOSE 5000  # MLflow
+EXPOSE 4200  # Prefect
+EXPOSE 3000  # Dagit
+EXPOSE 8000  # FastAPI
+EXPOSE 8501  # Streamlit
+
+# Default command (can be overridden)
 CMD ["/bin/bash"]
