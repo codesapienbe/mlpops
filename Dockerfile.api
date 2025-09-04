@@ -38,6 +38,9 @@ RUN mkdir -p /app/models /app/data/raw /app/data/processed
 # Download NLTK data using uv (consistent with local development)
 RUN uv run python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True); nltk.download('wordnet', quiet=True); nltk.download('omw-1.4', quiet=True)"
 
+# Run training during build to ensure model is available
+RUN uv run train
+
 EXPOSE 8000
 
 CMD ["uv", "run", "api"]

@@ -7,6 +7,7 @@ import mlflow
 from pathlib import Path
 
 from config import config_manager, setup_logger
+from config import get_project_root
 from core import RobustIngestion, LanguageAwareCleaner, MultiLangTrainer
 
 # Metrics
@@ -147,7 +148,8 @@ class PipelineOrchestrator:
         self.trainer.train_and_save(X, y)
         # Log trained model artifact to MLflow
         model_cfg = self.config.get('model', {})
-        model_path = Path(model_cfg.get('store_path', 'models')) / model_cfg.get('file_name', 'model.pkl')
+        project_root = get_project_root()
+        model_path = project_root / model_cfg.get('store_path', 'models') / model_cfg.get('file_name', 'model.pkl')
         mlflow.log_artifact(str(model_path), artifact_path="model")
         return {"trained_rows": len(self.cleaned_train_df)}
 
@@ -199,7 +201,8 @@ def run_pipeline():
                 trainer.train_and_save(X, y)
                 # Log trained model artifact to MLflow
                 model_cfg = config.get('model', {})
-                model_path = Path(model_cfg.get('store_path', 'models')) / model_cfg.get('file_name', 'model.pkl')
+                project_root = get_project_root()
+                model_path = project_root / model_cfg.get('store_path', 'models') / model_cfg.get('file_name', 'model.pkl')
                 mlflow.log_artifact(str(model_path), artifact_path="model")
 
             # Model Evaluation

@@ -67,7 +67,9 @@ class RobustIngestion:
     def load_data(self):
         """Load and split data"""
         try:
-            raw_path = Path(self.config['data']['raw_path']) / self.config['data']['jobs_file']
+            from config import get_project_root
+            project_root = get_project_root()
+            raw_path = project_root / self.config['data']['raw_path'] / self.config['data']['jobs_file']
             
             if not raw_path.exists():
                 raise DataValidationError(f"Data file not found: {raw_path}")
@@ -237,7 +239,9 @@ class MultiLangTrainer:
         try:
             self.pipeline.fit(X, y)
             
-            model_path = Path(self.config.get('model', {}).get('store_path', 'models'))
+            from config import get_project_root
+            project_root = get_project_root()
+            model_path = project_root / self.config.get('model', {}).get('store_path', 'models')
             model_path.mkdir(parents=True, exist_ok=True)
             file_path = model_path / 'model.pkl'
             
@@ -284,8 +288,9 @@ class Predictor:
         model_config = config.get('model', {})
         store_path = model_config.get('store_path', 'models')
         model_file = model_config.get('file_name', 'model.pkl')
-        # Resolve store_path relative to project root (two levels up from this file)
-        project_root = Path(__file__).resolve().parents[2]
+        
+        from config import get_project_root
+        project_root = get_project_root()
         self.model_path = project_root / store_path / model_file
         
         # Create directory if needed

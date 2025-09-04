@@ -6,12 +6,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/app/models
       - ./data:/app/data
     environment:
       - CONFIG_PATH=/app/config.yml
-    depends_on:
-      - mlops-training
     restart: unless-stopped
 
   mlops-web:
@@ -26,15 +23,3 @@ services:
     depends_on:
       - mlops-api
     restart: unless-stopped
-
-  mlops-training:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    command: ["uv", "run", "train"]
-    volumes:
-      - ./models:/app/models
-      - ./data:/app/data
-    environment:
-      - CONFIG_PATH=/app/config.yml
-    restart: "no"
